@@ -58,6 +58,9 @@ class FluidsAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"997.", response.data)
         self.assertIn(b"2 calculated data points", response.data)
+        self.assertIn(b"plotly_click", response.data)
+        self.assertIn(b"pinnedPoints", response.data)
+        self.assertIn(b"click it again to unpin", response.data)
 
     def test_catalog_property_can_be_calculated(self):
         response = self.client.post("/", data={

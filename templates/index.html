@@ -85,19 +85,38 @@
 
     {% if charts %}
       <section class="panel chart-panel">
-        <div class="section-heading"><span>03</span><div><h2>Property trends</h2><p>Hover, zoom, and compare fluids.</p></div></div>
+        <div class="section-heading"><span>03</span><div><h2>Property trends</h2><p>Hover to inspect. Click a point to keep its values visible; click it again to unpin.</p></div></div>
         {% for chart in charts %}<div id="chart-{{ loop.index }}" class="chart"></div>{% endfor %}
       </section>
       <script src="{{ url_for('static', filename='plotly.min.js') }}"></script>
       <script>
         const charts = {{ charts|tojson }};
+        const chartText = value => String(value).replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+        const chartNumber = value => Number.isFinite(Number(value)) ? Number(value).toLocaleString(undefined, {maximumSignificantDigits: 7}) : String(value);
         charts.forEach((chart, index) => {
           const traces = chart.traces.map(trace => ({...trace, mode: 'lines+markers', type: 'scatter'}));
           Plotly.newPlot(`chart-${index + 1}`, traces, {
             title: {text: chart.property, x: 0.02}, xaxis: {title: chart.x_label},
             yaxis: {title: chart.property}, paper_bgcolor: 'transparent', plot_bgcolor: '#f7faf9',
             margin: {t: 60, r: 24, b: 70, l: 90}, font: {family: 'system-ui', color: '#18332f'}
-          }, {responsive: true, displaylogo: false});
+          }, {responsive: true, displaylogo: false}).then(graph => {
+            const pinnedPoints = new Map();
+            graph.on('plotly_click', event => {
+              const point = event.points[0];
+              const key = `${point.curveNumber}:${point.pointNumber}`;
+              if (pinnedPoints.has(key)) {
+                pinnedPoints.delete(key);
+              } else {
+                pinnedPoints.set(key, {
+                  x: point.x, y: point.y, xref: 'x', yref: 'y', showarrow: true,
+                  arrowhead: 2, ax: 0, ay: -48, bgcolor: '#ffffff', bordercolor: '#087f6f',
+                  borderpad: 6, font: {size: 11, color: '#18332f'},
+                  text: `<b>${chartText(point.data.name)}</b><br>${chartText(chart.x_label)}: ${chartNumber(point.x)}<br>${chartText(chart.property)}: ${chartNumber(point.y)}`
+                });
+              }
+              Plotly.relayout(graph, {annotations: [...pinnedPoints.values()]});
+            });
+          });
         });
       </script>
     {% endif %}

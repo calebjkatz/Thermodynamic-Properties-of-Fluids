@@ -20,6 +20,8 @@ Public requests are limited to 10 fluids and 100 temperature points to keep scie
 
 Pressure inputs and results support pascals and atmospheres, with live conversion of entered values when units change. The reserved `temperature_pressure_surface` calculation mode and disabled interface option provide the framework for a future simultaneous temperature/pressure sweep with 3D Plotly surfaces.
 
+Plotly data points support click-to-pin annotations. A pinned label shows the fluid, axis value, and property value until the same point is clicked again.
+
 Suggestions, bug reports, and incorrect-result reports are submitted from the browser to Formspree. The form includes optional contact information, optional disclosed browser diagnostics, and a spam honeypot; feedback is not written to the Flask server filesystem.
 
 ## Production command
