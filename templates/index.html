@@ -101,6 +101,13 @@
             margin: {t: 60, r: 24, b: 70, l: 90}, font: {family: 'system-ui', color: '#18332f'}
           }, {responsive: true, displaylogo: false}).then(graph => {
             const pinnedPoints = new Map();
+            if (index === 0) {
+              const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+              requestAnimationFrame(() => {
+                graph.scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'start'});
+                history.replaceState(null, '', '#chart-1');
+              });
+            }
             graph.on('plotly_click', event => {
               const point = event.points[0];
               const key = `${point.curveNumber}:${point.pointNumber}`;

@@ -61,6 +61,9 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b"plotly_click", response.data)
         self.assertIn(b"pinnedPoints", response.data)
         self.assertIn(b"click it again to unpin", response.data)
+        self.assertIn(b"graph.scrollIntoView", response.data)
+        self.assertIn(b"prefers-reduced-motion", response.data)
+        self.assertIn(b"#chart-1", response.data)
 
     def test_catalog_property_can_be_calculated(self):
         response = self.client.post("/", data={

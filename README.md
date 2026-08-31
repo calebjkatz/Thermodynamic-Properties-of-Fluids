@@ -22,6 +22,8 @@ Pressure inputs and results support pascals and atmospheres, with live conversio
 
 Plotly data points support click-to-pin annotations. A pinned label shows the fluid, axis value, and property value until the same point is clicked again.
 
+After a successful calculation with graphable results, the page scrolls to the first graph once Plotly finishes rendering it. The behavior respects the browser's reduced-motion preference.
+
 Suggestions, bug reports, and incorrect-result reports are submitted from the browser to Formspree. The form includes optional contact information, optional disclosed browser diagnostics, and a spam honeypot; feedback is not written to the Flask server filesystem.
 
 ## Production command
