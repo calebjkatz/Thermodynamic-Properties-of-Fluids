@@ -30,21 +30,28 @@
       <div class="field-grid">
         <fieldset>
           <legend>Calculation mode</legend>
-          <label class="radio"><input type="radio" name="mode" value="range" {% if form.get('mode', 'range') == 'range' %}checked{% endif %}> Temperature range</label>
-          <label class="radio"><input type="radio" name="mode" value="single" {% if form.get('mode') == 'single' %}checked{% endif %}> Single state</label>
+          <label class="radio"><input type="radio" name="mode" value="temperature_range" {% if form.get('mode', 'temperature_range') == 'temperature_range' %}checked{% endif %}> Temperature range</label>
+          <label class="radio"><input type="radio" name="mode" value="pressure_range" {% if form.get('mode') == 'pressure_range' %}checked{% endif %}> Pressure range</label>
+          <label class="radio future-mode" title="Framework prepared; calculation coming later"><input type="radio" name="mode" value="temperature_pressure_surface" disabled> Temperature + pressure surface <small>3D · coming later</small></label>
         </fieldset>
         <fieldset>
           <legend>Temperature unit</legend>
           <label class="radio"><input type="radio" name="unit" value="K" {% if form.get('unit', 'K') == 'K' %}checked{% endif %}> Kelvin</label>
           <label class="radio"><input type="radio" name="unit" value="C" {% if form.get('unit') == 'C' %}checked{% endif %}> Celsius</label>
         </fieldset>
+        <fieldset>
+          <legend>Pressure unit</legend>
+          <label class="radio"><input type="radio" name="pressure_unit" value="Pa" {% if form.get('pressure_unit', 'Pa') == 'Pa' %}checked{% endif %}> Pascals</label>
+          <label class="radio"><input type="radio" name="pressure_unit" value="atm" {% if form.get('pressure_unit') == 'atm' %}checked{% endif %}> Atmospheres</label>
+        </fieldset>
       </div>
 
       <div class="field-grid inputs">
-        <label>Start temperature<input name="start_temperature" type="number" step="any" required value="{{ form.get('start_temperature', '298.15') }}"></label>
-        <label class="range-only">End temperature<input name="end_temperature" type="number" step="any" value="{{ form.get('end_temperature', '373.15') }}"></label>
-        <label>Pressure (Pa)<input name="pressure" type="number" step="any" min="0" required value="{{ form.get('pressure', '101325') }}"></label>
-        <label class="range-only">Number of points<input name="points" type="number" min="2" max="100" value="{{ form.get('points', '25') }}"></label>
+        <label id="start-temperature-label">Start temperature<input name="start_temperature" type="number" step="any" required value="{{ form.get('start_temperature', '298.15') }}"></label>
+        <label class="temperature-range-only">End temperature<input name="end_temperature" type="number" step="any" value="{{ form.get('end_temperature', '373.15') }}"></label>
+        <label id="start-pressure-label">Fixed pressure<input name="start_pressure" type="number" step="any" min="0" required value="{{ form.get('start_pressure', '101325') }}"></label>
+        <label class="pressure-range-only">End pressure<input name="end_pressure" type="number" step="any" min="0" value="{{ form.get('end_pressure', '202650') }}"></label>
+        <label>Number of points<input name="points" type="number" min="2" max="100" value="{{ form.get('points', '25') }}"></label>
       </div>
 
       <div class="selector-grid">
@@ -87,7 +94,7 @@
         charts.forEach((chart, index) => {
           const traces = chart.traces.map(trace => ({...trace, mode: 'lines+markers', type: 'scatter'}));
           Plotly.newPlot(`chart-${index + 1}`, traces, {
-            title: {text: chart.property, x: 0.02}, xaxis: {title: chart.temperature_label},
+            title: {text: chart.property, x: 0.02}, xaxis: {title: chart.x_label},
             yaxis: {title: chart.property}, paper_bgcolor: 'transparent', plot_bgcolor: '#f7faf9',
             margin: {t: 60, r: 24, b: 70, l: 90}, font: {family: 'system-ui', color: '#18332f'}
           }, {responsive: true, displaylogo: false});
@@ -276,7 +283,20 @@
       finally { button.disabled = false; button.firstChild.textContent = 'Send feedback '; }
     });
     const modeInputs = document.querySelectorAll('input[name="mode"]');
-    function syncMode() { const range = document.querySelector('input[name="mode"]:checked').value === 'range'; document.querySelectorAll('.range-only').forEach(el => el.hidden = !range); }
+    function syncMode() {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const temperatureRange = mode === 'temperature_range';
+      document.querySelectorAll('.temperature-range-only').forEach(el => el.hidden = !temperatureRange);
+      document.querySelectorAll('.pressure-range-only').forEach(el => el.hidden = temperatureRange);
+      document.querySelector('input[name="end_temperature"]').required = temperatureRange;
+      document.querySelector('input[name="end_pressure"]').required = !temperatureRange;
+      const temperatureUnit = document.querySelector('input[name="unit"]:checked').value === 'K' ? 'K' : '°C';
+      const pressureUnit = document.querySelector('input[name="pressure_unit"]:checked').value;
+      document.querySelector('#start-temperature-label').childNodes[0].textContent = `${temperatureRange ? 'Start temperature' : 'Fixed temperature'} (${temperatureUnit})`;
+      document.querySelector('.temperature-range-only').childNodes[0].textContent = `End temperature (${temperatureUnit})`;
+      document.querySelector('#start-pressure-label').childNodes[0].textContent = `${temperatureRange ? 'Fixed pressure' : 'Start pressure'} (${pressureUnit})`;
+      document.querySelector('.pressure-range-only').childNodes[0].textContent = `End pressure (${pressureUnit})`;
+    }
     modeInputs.forEach(input => input.addEventListener('change', syncMode)); syncMode();
     let previousUnit = document.querySelector('input[name="unit"]:checked').value;
     document.querySelectorAll('input[name="unit"]').forEach(input => input.addEventListener('change', event => {
@@ -287,6 +307,20 @@
         if (Number.isFinite(value)) field.value = (previousUnit === 'K' ? value - 273.15 : value + 273.15).toFixed(2);
       });
       previousUnit = nextUnit;
+      syncMode();
+    }));
+    let previousPressureUnit = document.querySelector('input[name="pressure_unit"]:checked').value;
+    document.querySelectorAll('input[name="pressure_unit"]').forEach(input => input.addEventListener('change', event => {
+      const nextUnit = event.target.value;
+      document.querySelectorAll('input[name="start_pressure"], input[name="end_pressure"]').forEach(field => {
+        if (field.value === '') return;
+        const value = Number(field.value);
+        if (!Number.isFinite(value)) return;
+        const converted = previousPressureUnit === 'Pa' ? value / 101325 : value * 101325;
+        field.value = nextUnit === 'atm' ? converted.toFixed(8).replace(/0+$/,'').replace(/\.$/,'') : converted.toFixed(2);
+      });
+      previousPressureUnit = nextUnit;
+      syncMode();
     }));
     document.querySelector('#fluid-search').addEventListener('input', event => {
       const query = event.target.value.toLowerCase();

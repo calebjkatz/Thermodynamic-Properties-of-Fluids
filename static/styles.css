@@ -19,7 +19,7 @@ h2 { margin:0; font-family:Georgia,serif; font-size:1.65rem; } .section-heading 
 .inputs { grid-template-columns:repeat(4,minmax(0,1fr)); }
 fieldset { min-width:0; margin:0; padding:18px; border:1px solid var(--line); }
 legend { padding:0 8px; font-weight:750; } legend small { margin-left:6px; color:var(--muted); font-weight:400; }
-.radio { display:inline-flex; gap:8px; margin:6px 20px 6px 0; }
+.radio { display:inline-flex; gap:8px; margin:6px 20px 6px 0; }.future-mode { display:flex; color:var(--muted); opacity:.75; }.future-mode small { padding:2px 6px; border-radius:10px; background:var(--aqua); color:var(--teal); font-weight:700; }
 .inputs label { font-size:.85rem; font-weight:700; }
 input[type="number"] { width:100%; margin-top:8px; padding:12px; border:1px solid #aebbb7; border-radius:3px; color:var(--ink); font:inherit; }
 input[type="password"],input[type="search"],input[name="name"],input[name="identifier"] { width:100%; margin:8px 0 20px; padding:12px; border:1px solid #aebbb7; border-radius:3px; color:var(--ink); font:inherit; }

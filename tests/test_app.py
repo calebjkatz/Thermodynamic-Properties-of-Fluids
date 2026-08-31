@@ -26,6 +26,12 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b"Customize your property list", response.data)
         self.assertIn(b"Sortable property list", response.data)
         self.assertIn(b"Surface Tension (N/m)", response.data)
+        self.assertIn(b'value="pressure_range"', response.data)
+        self.assertIn(b'value="temperature_pressure_surface" disabled', response.data)
+        self.assertIn(b'name="pressure_unit" value="atm"', response.data)
+        self.assertNotIn(b"Single state", response.data)
+        self.assertIn(b"value / 101325", response.data)
+        self.assertIn(b"value * 101325", response.data)
 
     def test_custom_fluid_validation(self):
         response = self.client.post("/api/fluids/validate", json={"identifier": "acetone", "name": "My acetone"})
@@ -35,8 +41,9 @@ class FluidsAppTests(unittest.TestCase):
 
     def test_browser_added_fluid_can_be_calculated(self):
         response = self.client.post("/", data={
-            "mode": "single", "unit": "K", "start_temperature": "298.15",
-            "pressure": "101325", "fluids": "67-64-1", "fluid_labels": "My acetone",
+            "mode": "temperature_range", "unit": "K", "pressure_unit": "Pa",
+            "start_temperature": "298.15", "end_temperature": "300", "points": "2",
+            "start_pressure": "101325", "fluids": "67-64-1", "fluid_labels": "My acetone",
             "properties": "Density (kg/m^3)",
         })
         self.assertEqual(response.status_code, 200)
@@ -44,8 +51,8 @@ class FluidsAppTests(unittest.TestCase):
 
     def test_water_range_matches_expected_density(self):
         response = self.client.post("/", data={
-            "mode": "range", "unit": "K", "start_temperature": "298.15",
-            "end_temperature": "300", "pressure": "101325", "points": "2",
+            "mode": "temperature_range", "unit": "K", "pressure_unit": "Pa",
+            "start_temperature": "298.15", "end_temperature": "300", "start_pressure": "101325", "points": "2",
             "fluids": "7732-18-5", "properties": "Density (kg/m^3)",
         })
         self.assertEqual(response.status_code, 200)
@@ -54,18 +61,41 @@ class FluidsAppTests(unittest.TestCase):
 
     def test_catalog_property_can_be_calculated(self):
         response = self.client.post("/", data={
-            "mode": "single", "unit": "K", "start_temperature": "298.15",
-            "pressure": "101325", "fluids": "7732-18-5",
+            "mode": "temperature_range", "unit": "K", "pressure_unit": "Pa",
+            "start_temperature": "298.15", "end_temperature": "300", "points": "2",
+            "start_pressure": "101325", "fluids": "7732-18-5",
             "properties": "Surface Tension (N/m)",
         })
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Surface Tension (N/m)", response.data)
         self.assertIn(b"0.07197", response.data)
 
+    def test_pressure_range_at_fixed_temperature_in_atmospheres(self):
+        response = self.client.post("/", data={
+            "mode": "pressure_range", "unit": "C", "pressure_unit": "atm",
+            "start_temperature": "25", "start_pressure": "1", "end_pressure": "2",
+            "points": "3", "fluids": "7732-18-5",
+            "properties": "Density (kg/m^3)",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"3 calculated data points", response.data)
+        self.assertIn(b"Pressure (atm)", response.data)
+        self.assertIn(b'"x_label": "Pressure (atm)"', response.data)
+
+    def test_three_dimensional_mode_is_reserved_but_not_enabled(self):
+        response = self.client.post("/", data={
+            "mode": "temperature_pressure_surface", "unit": "K", "pressure_unit": "Pa",
+            "start_temperature": "298.15", "start_pressure": "101325", "points": "3",
+            "fluids": "7732-18-5", "properties": "Density (kg/m^3)",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"surface mode is scaffolded but not available yet", response.data)
+
     def test_csv_export(self):
         response = self.client.post("/export", data={
-            "mode": "single", "unit": "K", "start_temperature": "298.15",
-            "pressure": "101325", "fluids": "7732-18-5",
+            "mode": "temperature_range", "unit": "K", "pressure_unit": "Pa",
+            "start_temperature": "298.15", "end_temperature": "300", "points": "2",
+            "start_pressure": "101325", "fluids": "7732-18-5",
             "properties": "Density (kg/m^3)",
         })
         self.assertEqual(response.status_code, 200)
@@ -78,8 +108,8 @@ class FluidsAppTests(unittest.TestCase):
 
     def test_public_point_limit(self):
         response = self.client.post("/", data={
-            "mode": "range", "unit": "K", "start_temperature": "298.15",
-            "end_temperature": "300", "pressure": "101325", "points": "101",
+            "mode": "temperature_range", "unit": "K", "pressure_unit": "Pa",
+            "start_temperature": "298.15", "end_temperature": "300", "start_pressure": "101325", "points": "101",
             "fluids": "7732-18-5", "properties": "Density (kg/m^3)",
         })
         self.assertIn(b"Number of points must be between 2 and 100", response.data)

@@ -1,6 +1,6 @@
 # Thermodynamic Fluids Explorer — Flask MVP
 
-A web version of the desktop thermodynamics app. It supports single-state and liquid-only temperature-range calculations, multiple fluids and properties, CSV downloads, interactive Plotly charts, and browser-local fluid customization.
+A web version of the desktop thermodynamics app. It supports liquid-only temperature-range and fixed-temperature pressure-range calculations, multiple fluids and properties, CSV downloads, interactive Plotly charts, and browser-local customization.
 
 ## Run locally
 
@@ -17,6 +17,8 @@ Open <http://127.0.0.1:5000>.
 Plotly is bundled locally, so calculations and charts work without an internet connection.
 
 Public requests are limited to 10 fluids and 100 temperature points to keep scientific calculations responsive on small hosting instances.
+
+Pressure inputs and results support pascals and atmospheres, with live conversion of entered values when units change. The reserved `temperature_pressure_surface` calculation mode and disabled interface option provide the framework for a future simultaneous temperature/pressure sweep with 3D Plotly surfaces.
 
 Suggestions, bug reports, and incorrect-result reports are submitted from the browser to Formspree. The form includes optional contact information, optional disclosed browser diagnostics, and a spam honeypot; feedback is not written to the Flask server filesystem.
 
