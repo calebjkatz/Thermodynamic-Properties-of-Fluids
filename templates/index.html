@@ -13,7 +13,7 @@
       <p class="eyebrow">FLUID PROPERTY TOOL</p>
       <h1>Thermodynamic Fluids Explorer</h1>
       <p>Compare liquid-state properties across temperatures and pressure.</p>
-      <a class="hero-link" href="#manage-fluids">Customize your fluid list →</a>
+      <div class="hero-links"><a class="hero-link" href="#manage-fluids">Customize your fluid list →</a><a class="hero-link" href="#feedback">Send feedback →</a></div>
     </div>
     <div class="phase-mark" aria-hidden="true"><span></span><span></span><span></span></div>
   </header>
@@ -119,6 +119,30 @@
         </div>
       </div>
     </section>
+
+    <section class="panel feedback-panel" id="feedback">
+      <div class="section-heading"><span>05</span><div><h2>Suggestions and bug reports</h2><p>Help improve the calculator or tell us when something does not look right.</p></div></div>
+      <div class="feedback-layout">
+        <div class="feedback-intro">
+          <h3>What should you report?</h3>
+          <ul><li>An incorrect or unexpected property value</li><li>A calculation or graph that fails</li><li>A confusing part of the interface</li><li>An idea for a useful new capability</li></ul>
+          <p>Please do not include passwords, confidential research, or other sensitive information.</p>
+        </div>
+        <form id="feedback-form" action="https://formspree.io/f/xjyvggnl" method="post">
+          <div id="feedback-status" class="alert" role="status" hidden></div>
+          <label>Type of feedback<select name="feedback_type" required><option value="">Choose one…</option><option value="Suggestion">Suggestion</option><option value="Bug or error">Bug or error</option><option value="Incorrect result">Incorrect result</option><option value="Usability problem">Usability problem</option><option value="Other">Other</option></select></label>
+          <label>Short title<input name="title" required maxlength="120" placeholder="Briefly summarize the issue or idea"></label>
+          <label>Description<textarea name="description" required maxlength="5000" rows="6" placeholder="What happened, or what would you like to improve?"></textarea></label>
+          <div class="feedback-two-column"><label>Steps to reproduce <small>optional</small><textarea name="steps_to_reproduce" maxlength="2500" rows="4" placeholder="1. Select…&#10;2. Enter…&#10;3. Click…"></textarea></label><label>Expected result <small>optional</small><textarea name="expected_result" maxlength="2500" rows="4" placeholder="What did you expect to happen?"></textarea></label></div>
+          <label>Email for follow-up <small>optional</small><input name="email" type="email" maxlength="254" autocomplete="email" placeholder="you@example.com"></label>
+          <label class="diagnostic-option"><input id="include-diagnostics" type="checkbox" checked> Include the current page address and browser type to help diagnose bugs</label>
+          <input id="feedback-page" type="hidden" name="page_url">
+          <input id="feedback-browser" type="hidden" name="browser">
+          <input class="honeypot" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button type="submit">Send feedback <span>→</span></button>
+        </form>
+      </div>
+    </section>
   </main>
   <footer>Calculations use the Python <code>thermo</code> library. Verify critical engineering decisions independently.</footer>
   <script>
@@ -156,6 +180,23 @@
     document.querySelector('#managed-fluid-list').addEventListener('click', event => { const button=event.target.closest('.remove-fluid'); if(!button)return; const cas=button.dataset.cas; const fluid=activeFluids().find(item=>String(item.cas_number)===cas); if(!confirm(`Remove ${fluid.name} from this browser's list?`))return; if(defaultFluids.some(item=>String(item.cas_number)===cas)) customization.hidden=[...new Set([...customization.hidden,cas])]; else customization.added=customization.added.filter(item=>String(item.cas_number)!==cas); saveFluids(); renderFluids(); showFluidMessage(`${fluid.name} was removed from this browser. The original CSV was not changed.`); });
     document.querySelector('#reset-fluids').addEventListener('click', () => { if(!confirm('Restore the complete default fluid list and remove browser-added fluids?'))return; customization={added:[],hidden:[]}; saveFluids(); renderFluids(); showFluidMessage('The original default list has been restored.'); });
     document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('.managed-item').forEach(item=>item.hidden=!item.dataset.search.includes(q)); });
+    const feedbackForm = document.querySelector('#feedback-form');
+    feedbackForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const status = document.querySelector('#feedback-status');
+      const button = feedbackForm.querySelector('button[type="submit"]');
+      const includeDiagnostics = document.querySelector('#include-diagnostics').checked;
+      document.querySelector('#feedback-page').value = includeDiagnostics ? window.location.href : '';
+      document.querySelector('#feedback-browser').value = includeDiagnostics ? navigator.userAgent : '';
+      status.hidden = true; button.disabled = true; button.firstChild.textContent = 'Sending… ';
+      try {
+        const response = await fetch(feedbackForm.action, {method:'POST', body:new FormData(feedbackForm), headers:{'Accept':'application/json'}});
+        if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.errors?.map(item => item.message).join(', ') || 'The report could not be sent.'); }
+        feedbackForm.reset(); document.querySelector('#include-diagnostics').checked = true;
+        status.textContent = 'Thank you—your feedback was sent successfully.'; status.className = 'alert success'; status.hidden = false;
+      } catch (error) { status.textContent = `${error.message} Please try again later.`; status.className = 'alert error'; status.hidden = false; }
+      finally { button.disabled = false; button.firstChild.textContent = 'Send feedback '; }
+    });
     const modeInputs = document.querySelectorAll('input[name="mode"]');
     function syncMode() { const range = document.querySelector('input[name="mode"]:checked').value === 'range'; document.querySelectorAll('.range-only').forEach(el => el.hidden = !range); }
     modeInputs.forEach(input => input.addEventListener('change', syncMode)); syncMode();

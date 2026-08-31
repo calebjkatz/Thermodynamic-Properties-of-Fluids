@@ -18,6 +18,8 @@ Plotly is bundled locally, so calculations and charts work without an internet c
 
 Public requests are limited to 10 fluids and 100 temperature points to keep scientific calculations responsive on small hosting instances.
 
+Suggestions, bug reports, and incorrect-result reports are submitted from the browser to Formspree. The form includes optional contact information, optional disclosed browser diagnostics, and a spam honeypot; feedback is not written to the Flask server filesystem.
+
 ## Production command
 
 ```bash

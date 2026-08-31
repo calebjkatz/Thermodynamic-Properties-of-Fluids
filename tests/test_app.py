@@ -14,6 +14,9 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b"Thermodynamic Fluids Explorer", response.data)
         self.assertIn(b"Customize your fluid list", response.data)
         self.assertIn(b"Reset to all defaults", response.data)
+        self.assertIn(b"Suggestions and bug reports", response.data)
+        self.assertIn(b"https://formspree.io/f/xjyvggnl", response.data)
+        self.assertIn(b'name="_gotcha"', response.data)
 
     def test_custom_fluid_validation(self):
         response = self.client.post("/api/fluids/validate", json={"identifier": "acetone", "name": "My acetone"})
