@@ -34,6 +34,18 @@ PROPERTY_MAP = {
     "Vapor Pressure (Pa)": "Psat",
 }
 
+ADDITIONAL_PROPERTY_MAP = {
+    "Surface Tension (N/m)": "sigma",
+    "Prandtl Number (Dimensionless)": "Pr",
+    "Thermal Diffusivity (m^2/s)": "alpha",
+    "Kinematic Viscosity (m^2/s)": "nu",
+    "Compressibility Factor (Dimensionless)": "Z",
+    "Liquid Molar Volume (m^3/mol)": "Vml",
+    "Heat of Vaporization (J/kg)": "Hvap",
+}
+
+SUPPORTED_PROPERTY_MAP = {**PROPERTY_MAP, **ADDITIONAL_PROPERTY_MAP}
+
 
 def load_fluids():
     """Load the immutable default list. Browser customizations never write here."""
@@ -77,7 +89,7 @@ def calculate(fluid_rows, temperatures, pressure, properties, liquid_only):
                     "Pressure (Pa)": pressure,
                 }
                 for label in properties:
-                    row[label] = safe_property(chemical, PROPERTY_MAP[label])
+                    row[label] = safe_property(chemical, SUPPORTED_PROPERTY_MAP[label])
                 rows.append(row)
                 points_found += 1
             except Exception as exc:
@@ -104,8 +116,10 @@ def parse_form(form, fluids):
         raise ValueError("Select at least one fluid.")
     if len(selected_cas) > 10:
         raise ValueError("Select no more than 10 fluids at a time.")
-    if not properties or any(item not in PROPERTY_MAP for item in properties):
+    if not properties or any(item not in SUPPORTED_PROPERTY_MAP for item in properties):
         raise ValueError("Select at least one valid property.")
+    if len(properties) > 20:
+        raise ValueError("Select no more than 20 properties at a time.")
 
     pressure = float(form.get("pressure", ""))
     start = float(form.get("start_temperature", ""))
@@ -202,6 +216,10 @@ def index():
     context = {
         "fluids": fluids.to_dict("records"),
         "properties": list(PROPERTY_MAP),
+        "property_catalog": [
+            {"label": label, "is_default": label in PROPERTY_MAP}
+            for label in SUPPORTED_PROPERTY_MAP
+        ],
         "form": request.form,
         "results": None,
         "charts": [],

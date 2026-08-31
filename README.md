@@ -27,3 +27,5 @@ gunicorn app:app
 ```
 
 The 16 records in this folder's independent `fluids.csv` are immutable defaults. Added fluids, hidden defaults, and drag-and-drop ordering are stored in the browser's `localStorage`, so every browser gets its own customized list and no fluid-management action writes to CSV. “Reset to all defaults” clears those customizations. Clearing browser site data also resets the list.
+
+Property customization works the same way: users can add from a validated supported catalog, hide default properties, search, drag to reorder, and reset the list. Each browser stores its property choices and ordering locally.

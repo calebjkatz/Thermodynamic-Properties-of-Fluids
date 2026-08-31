@@ -23,6 +23,9 @@ class FluidsAppTests(unittest.TestCase):
         self.assertNotIn(b"Methoxyethanol", response.data)
         self.assertIn(b'draggable="true"', response.data)
         self.assertIn(b"Your custom fluid order was saved", response.data)
+        self.assertIn(b"Customize your property list", response.data)
+        self.assertIn(b"Sortable property list", response.data)
+        self.assertIn(b"Surface Tension (N/m)", response.data)
 
     def test_custom_fluid_validation(self):
         response = self.client.post("/api/fluids/validate", json={"identifier": "acetone", "name": "My acetone"})
@@ -48,6 +51,16 @@ class FluidsAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"997.", response.data)
         self.assertIn(b"2 calculated data points", response.data)
+
+    def test_catalog_property_can_be_calculated(self):
+        response = self.client.post("/", data={
+            "mode": "single", "unit": "K", "start_temperature": "298.15",
+            "pressure": "101325", "fluids": "7732-18-5",
+            "properties": "Surface Tension (N/m)",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Surface Tension (N/m)", response.data)
+        self.assertIn(b"0.07197", response.data)
 
     def test_csv_export(self):
         response = self.client.post("/export", data={

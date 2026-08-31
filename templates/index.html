@@ -13,7 +13,7 @@
       <p class="eyebrow">FLUID PROPERTY TOOL</p>
       <h1>Thermodynamic Fluids Explorer</h1>
       <p>Compare liquid-state properties across temperatures and pressure.</p>
-      <nav class="hero-links" aria-label="Page sections"><a class="hero-link" href="#manage-fluids" data-scroll-to="manage-fluids">Customize your fluid list <span>↓</span></a><a class="hero-link" href="#feedback" data-scroll-to="feedback">Send feedback <span>↓</span></a></nav>
+      <nav class="hero-links" aria-label="Page sections"><a class="hero-link" href="#manage-fluids" data-scroll-to="manage-fluids">Customize fluids <span>↓</span></a><a class="hero-link" href="#manage-properties" data-scroll-to="manage-properties">Customize properties <span>↓</span></a><a class="hero-link" href="#feedback" data-scroll-to="feedback">Send feedback <span>↓</span></a></nav>
     </div>
     <div class="phase-mark" aria-hidden="true"><span></span><span></span><span></span></div>
   </header>
@@ -55,12 +55,8 @@
         </fieldset>
         <fieldset>
           <legend>Properties <small>Select one or more</small></legend>
-          <div class="check-list">
-            {% set chosen_properties = form.getlist('properties') %}
-            {% for property in properties %}
-              <label><input type="checkbox" name="properties" value="{{ property }}" {% if property in chosen_properties or (not form and property in ['Density (kg/m^3)', 'Viscosity (Pa*s)']) %}checked{% endif %}> <span>{{ property }}</span></label>
-            {% endfor %}
-          </div>
+          <input class="list-search" id="property-search" type="search" placeholder="Search properties">
+          <div class="check-list" id="property-options"></div>
         </fieldset>
       </div>
       <button type="submit">Run calculation <span>→</span></button>
@@ -121,8 +117,29 @@
       </div>
     </section>
 
+    <section class="panel property-manager" id="manage-properties">
+      <div class="section-heading"><span>05</span><div><h2>Customize your property list</h2><p>Add supported properties, hide defaults, and drag them into your preferred order. Changes stay in this browser.</p></div></div>
+      <div id="property-message" class="alert" hidden></div>
+      <div class="manager-grid">
+        <div class="manager-card">
+          <h3>Add a property</h3>
+          <p>Choose from properties validated against the calculation engine.</p>
+          <label>Available property<select id="add-property-select"><option value="">Choose a property…</option></select></label>
+          <button id="add-property" type="button">Add property <span>＋</span></button>
+        </div>
+        <div class="manager-card">
+          <h3>Current list</h3>
+          <p>Drag properties into order. Removing a default only hides it in this browser.</p>
+          <input id="manage-property-search" type="search" placeholder="Search current properties">
+          <p class="drag-hint">Drag using the dotted handle. Clear the search field before reordering.</p>
+          <div id="managed-property-list" class="managed-list" aria-label="Sortable property list"></div>
+          <button id="reset-properties" class="secondary" type="button">Reset to default properties <span>↺</span></button>
+        </div>
+      </div>
+    </section>
+
     <section class="panel feedback-panel" id="feedback">
-      <div class="section-heading"><span>05</span><div><h2>Suggestions and bug reports</h2><p>Help improve the calculator or tell us when something does not look right.</p></div></div>
+      <div class="section-heading"><span>06</span><div><h2>Suggestions and bug reports</h2><p>Help improve the calculator or tell us when something does not look right.</p></div></div>
       <div class="feedback-layout">
         <div class="feedback-intro">
           <h3>What should you report?</h3>
@@ -202,7 +219,45 @@
     managedList.addEventListener('drop', event => event.preventDefault());
     managedList.addEventListener('dragend', () => { if(!draggedFluid)return; draggedFluid.classList.remove('dragging'); customization.order=[...managedList.querySelectorAll('.managed-item')].map(item=>item.dataset.cas); saveFluids(); draggedFluid=null; renderFluids(); showFluidMessage('Your custom fluid order was saved in this browser.'); });
     document.querySelector('#reset-fluids').addEventListener('click', () => { if(!confirm('Restore the complete default fluid list and remove browser-added fluids?'))return; customization={added:[],hidden:[],order:[]}; saveFluids(); renderFluids(); showFluidMessage('The original default list and order have been restored.'); });
-    document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('.managed-item').forEach(item=>{item.hidden=!item.dataset.search.includes(q);item.draggable=!q;}); });
+    document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('#managed-fluid-list .managed-item').forEach(item=>{item.hidden=!item.dataset.search.includes(q);item.draggable=!q;}); });
+    const defaultProperties = {{ properties|tojson }};
+    const propertyCatalog = {{ property_catalog|tojson }};
+    let submittedProperties = {{ form.getlist('properties')|tojson }};
+    const propertyStorageKey = 'thermo-property-customizations-v1';
+    let propertyCustomization = {added: [], hidden: [], order: []};
+    try { propertyCustomization = {...propertyCustomization, ...JSON.parse(localStorage.getItem(propertyStorageKey) || '{}')}; } catch (_) {}
+    const activeProperties = () => {
+      const available = [...defaultProperties.filter(label => !propertyCustomization.hidden.includes(label)), ...propertyCustomization.added]
+        .filter((label,index,all) => all.indexOf(label) === index)
+        .filter(label => propertyCatalog.some(item => item.label === label));
+      const availableSet = new Set(available);
+      const ordered = propertyCustomization.order.filter(label => availableSet.has(label));
+      const orderedSet = new Set(ordered);
+      return [...ordered, ...available.filter(label => !orderedSet.has(label))];
+    };
+    const saveProperties = () => localStorage.setItem(propertyStorageKey, JSON.stringify(propertyCustomization));
+    const showPropertyMessage = (message,type='success') => { const box=document.querySelector('#property-message'); box.textContent=message; box.className=`alert ${type}`; box.hidden=false; };
+    function renderProperties() {
+      const checked = [...document.querySelectorAll('#property-options input[name="properties"]:checked')].map(input => input.value);
+      if (document.querySelector('#property-options').children.length) submittedProperties = checked;
+      const selected = submittedProperties.length ? submittedProperties : ['Density (kg/m^3)','Viscosity (Pa*s)'];
+      document.querySelector('#property-options').innerHTML = activeProperties().map(label => `<label class="property-option"><input type="checkbox" name="properties" value="${escapeHtml(label)}" ${selected.includes(label)?'checked':''}><span>${escapeHtml(label)}</span></label>`).join('');
+      document.querySelector('#managed-property-list').innerHTML = activeProperties().map(label => `<div class="managed-item property-item" draggable="true" data-property="${escapeHtml(label)}" data-search="${escapeHtml(label.toLowerCase())}"><span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span><span class="fluid-details"><strong>${escapeHtml(label)}</strong><small>${defaultProperties.includes(label)?'Default property':'Added property'}</small></span><button type="button" class="remove-property" data-property="${escapeHtml(label)}">Remove</button></div>`).join('');
+      const inactive = propertyCatalog.filter(item => !activeProperties().includes(item.label));
+      document.querySelector('#add-property-select').innerHTML = '<option value="">Choose a property…</option>' + inactive.map(item => `<option value="${escapeHtml(item.label)}">${escapeHtml(item.label)}</option>`).join('');
+      document.querySelector('#add-property').disabled = inactive.length === 0;
+    }
+    renderProperties();
+    document.querySelector('#add-property').addEventListener('click', () => { const select=document.querySelector('#add-property-select'); const label=select.value; if(!label)return; propertyCustomization.hidden=propertyCustomization.hidden.filter(item=>item!==label); if(!defaultProperties.includes(label))propertyCustomization.added=[...propertyCustomization.added.filter(item=>item!==label),label]; propertyCustomization.order=[...propertyCustomization.order.filter(item=>item!==label),label]; saveProperties(); submittedProperties.push(label); renderProperties(); showPropertyMessage(`${label} was added to this browser.`); });
+    const managedProperties = document.querySelector('#managed-property-list');
+    managedProperties.addEventListener('click', event => { const button=event.target.closest('.remove-property'); if(!button)return; const label=button.dataset.property; if(defaultProperties.includes(label))propertyCustomization.hidden=[...new Set([...propertyCustomization.hidden,label])]; else propertyCustomization.added=propertyCustomization.added.filter(item=>item!==label); propertyCustomization.order=propertyCustomization.order.filter(item=>item!==label); saveProperties(); renderProperties(); showPropertyMessage(`${label} was removed from this browser. The supported catalog was not changed.`); });
+    let draggedProperty = null;
+    managedProperties.addEventListener('dragstart', event => { if(document.querySelector('#manage-property-search').value.trim()){event.preventDefault();showPropertyMessage('Clear the property search before reordering.','warning');return;} draggedProperty=event.target.closest('.property-item'); if(!draggedProperty)return; draggedProperty.classList.add('dragging'); event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',draggedProperty.dataset.property); });
+    managedProperties.addEventListener('dragover', event => { if(!draggedProperty)return; event.preventDefault(); const target=event.target.closest('.property-item'); if(!target||target===draggedProperty)return; const after=event.clientY > target.getBoundingClientRect().top + target.offsetHeight/2; managedProperties.insertBefore(draggedProperty,after?target.nextSibling:target); });
+    managedProperties.addEventListener('drop', event => event.preventDefault());
+    managedProperties.addEventListener('dragend', () => { if(!draggedProperty)return; draggedProperty.classList.remove('dragging'); propertyCustomization.order=[...managedProperties.querySelectorAll('.property-item')].map(item=>item.dataset.property); saveProperties(); draggedProperty=null; renderProperties(); showPropertyMessage('Your custom property order was saved in this browser.'); });
+    document.querySelector('#reset-properties').addEventListener('click', () => { if(!confirm('Restore the complete default property list and order?'))return; propertyCustomization={added:[],hidden:[],order:[]}; saveProperties(); renderProperties(); showPropertyMessage('The default property list and order have been restored.'); });
+    document.querySelector('#manage-property-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('.property-item').forEach(item=>{item.hidden=!item.dataset.search.includes(q);item.draggable=!q;}); });
     const feedbackForm = document.querySelector('#feedback-form');
     feedbackForm.addEventListener('submit', async event => {
       event.preventDefault();
@@ -237,6 +292,7 @@
       const query = event.target.value.toLowerCase();
       document.querySelectorAll('.fluid-option').forEach(option => option.hidden = !option.textContent.toLowerCase().includes(query));
     });
+    document.querySelector('#property-search').addEventListener('input', event => { const query=event.target.value.toLowerCase(); document.querySelectorAll('.property-option').forEach(option=>option.hidden=!option.textContent.toLowerCase().includes(query)); });
   </script>
 </body>
 </html>
