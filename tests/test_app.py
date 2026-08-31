@@ -20,6 +20,7 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b'data-scroll-to="manage-fluids"', response.data)
         self.assertIn(b'data-scroll-to="feedback"', response.data)
         self.assertNotIn(b'target="_blank"', response.data)
+        self.assertNotIn(b"Methoxyethanol", response.data)
 
     def test_custom_fluid_validation(self):
         response = self.client.post("/api/fluids/validate", json={"identifier": "acetone", "name": "My acetone"})
