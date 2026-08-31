@@ -265,6 +265,7 @@ def index():
         "charts": [],
         "warnings": [],
         "error": None,
+        "has_submission": request.method == "POST",
     }
 
     if request.method == "POST":

@@ -24,6 +24,8 @@ Plotly data points support click-to-pin annotations. A pinned label shows the fl
 
 After a successful calculation with graphable results, the page scrolls to the first graph once Plotly finishes rendering it. The behavior respects the browser's reduced-motion preference.
 
+The calculator remembers its mode, units, numeric inputs, selected fluids, and selected properties in browser `localStorage`. Reloading restores that state, while “Reset calculation selections” clears only calculator state and preserves customized fluid/property lists.
+
 Suggestions, bug reports, and incorrect-result reports are submitted from the browser to Formspree. The form includes optional contact information, optional disclosed browser diagnostics, and a spam honeypot; feedback is not written to the Flask server filesystem.
 
 ## Production command

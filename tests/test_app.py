@@ -32,6 +32,9 @@ class FluidsAppTests(unittest.TestCase):
         self.assertNotIn(b"Single state", response.data)
         self.assertIn(b"value / 101325", response.data)
         self.assertIn(b"value * 101325", response.data)
+        self.assertIn(b"thermo-calculation-state-v1", response.data)
+        self.assertIn(b"saveCalculationState", response.data)
+        self.assertIn(b"Reset calculation selections", response.data)
 
     def test_custom_fluid_validation(self):
         response = self.client.post("/api/fluids/validate", json={"identifier": "acetone", "name": "My acetone"})

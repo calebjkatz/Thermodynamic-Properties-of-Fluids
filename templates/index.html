@@ -66,7 +66,7 @@
           <div class="check-list" id="property-options"></div>
         </fieldset>
       </div>
-      <button type="submit">Run calculation <span>→</span></button>
+      <div class="calculation-actions"><button type="submit">Run calculation <span>→</span></button><button id="reset-calculation" class="secondary" type="button">Reset calculation selections <span>↺</span></button></div>
     </form>
 
     {% if results %}
@@ -206,7 +206,25 @@
       }
     }));
     const defaultFluids = {{ fluids|tojson }};
-    let submittedFluids = {{ form.getlist('fluids')|tojson }};
+    const calculationStorageKey = 'thermo-calculation-state-v1';
+    const hasSubmittedCalculation = {{ has_submission|tojson }};
+    let savedCalculation = {};
+    let hasSavedCalculation = false;
+    try { const storedCalculation = localStorage.getItem(calculationStorageKey); hasSavedCalculation = storedCalculation !== null; savedCalculation = JSON.parse(storedCalculation || '{}'); } catch (_) {}
+    const useDefaultSelections = !hasSubmittedCalculation && !hasSavedCalculation;
+    if (!hasSubmittedCalculation) {
+      const savedMode = document.querySelector(`input[name="mode"][value="${savedCalculation.mode || ''}"]`);
+      const savedTemperatureUnit = document.querySelector(`input[name="unit"][value="${savedCalculation.temperatureUnit || ''}"]`);
+      const savedPressureUnit = document.querySelector(`input[name="pressure_unit"][value="${savedCalculation.pressureUnit || ''}"]`);
+      if (savedMode && !savedMode.disabled) savedMode.checked = true;
+      if (savedTemperatureUnit) savedTemperatureUnit.checked = true;
+      if (savedPressureUnit) savedPressureUnit.checked = true;
+      ['start_temperature','end_temperature','start_pressure','end_pressure','points'].forEach(name => {
+        const field = document.querySelector(`[name="${name}"]`);
+        if (field && savedCalculation[name] !== undefined) field.value = savedCalculation[name];
+      });
+    }
+    let submittedFluids = hasSubmittedCalculation ? {{ form.getlist('fluids')|tojson }} : (savedCalculation.fluids || []);
     const storageKey = 'thermo-fluid-customizations-v1';
     let customization = {added: [], hidden: [], order: []};
     try { customization = {...customization, ...JSON.parse(localStorage.getItem(storageKey) || '{}')}; } catch (_) {}
@@ -223,7 +241,7 @@
     function renderFluids() {
       const checked = [...document.querySelectorAll('#fluid-options input[name="fluids"]:checked')].map(input => input.value);
       if (document.querySelector('#fluid-options').children.length) submittedFluids = checked;
-      const selected = submittedFluids.length ? submittedFluids : ['7732-18-5'];
+      const selected = useDefaultSelections ? ['7732-18-5'] : submittedFluids;
       document.querySelector('#fluid-options').innerHTML = activeFluids().map(fluid => `<label class="fluid-option"><input type="checkbox" name="fluids" value="${escapeHtml(fluid.cas_number)}" data-label="${escapeHtml(fluid.name)}" ${selected.includes(String(fluid.cas_number)) ? 'checked' : ''}><span>${escapeHtml(fluid.name).replaceAll('_',' ')}</span><small>${escapeHtml(fluid.cas_number)}</small></label>`).join('');
       document.querySelector('#managed-fluid-list').innerHTML = activeFluids().map(fluid => `<div class="managed-item" draggable="true" data-cas="${escapeHtml(fluid.cas_number)}" data-search="${escapeHtml(`${fluid.name} ${fluid.formula || ''} ${fluid.cas_number}`.toLowerCase())}"><span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span><span class="fluid-details"><strong>${escapeHtml(fluid.name).replaceAll('_',' ')}</strong><small>${escapeHtml(fluid.formula || '')} · ${escapeHtml(fluid.cas_number)}</small></span><button type="button" class="remove-fluid" data-cas="${escapeHtml(fluid.cas_number)}">Remove</button></div>`).join('');
     }
@@ -255,7 +273,7 @@
     document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('#managed-fluid-list .managed-item').forEach(item=>{item.hidden=!item.dataset.search.includes(q);item.draggable=!q;}); });
     const defaultProperties = {{ properties|tojson }};
     const propertyCatalog = {{ property_catalog|tojson }};
-    let submittedProperties = {{ form.getlist('properties')|tojson }};
+    let submittedProperties = hasSubmittedCalculation ? {{ form.getlist('properties')|tojson }} : (savedCalculation.properties || []);
     const propertyStorageKey = 'thermo-property-customizations-v1';
     let propertyCustomization = {added: [], hidden: [], order: []};
     try { propertyCustomization = {...propertyCustomization, ...JSON.parse(localStorage.getItem(propertyStorageKey) || '{}')}; } catch (_) {}
@@ -273,7 +291,7 @@
     function renderProperties() {
       const checked = [...document.querySelectorAll('#property-options input[name="properties"]:checked')].map(input => input.value);
       if (document.querySelector('#property-options').children.length) submittedProperties = checked;
-      const selected = submittedProperties.length ? submittedProperties : ['Density (kg/m^3)','Viscosity (Pa*s)'];
+      const selected = useDefaultSelections ? ['Density (kg/m^3)','Viscosity (Pa*s)'] : submittedProperties;
       document.querySelector('#property-options').innerHTML = activeProperties().map(label => `<label class="property-option"><input type="checkbox" name="properties" value="${escapeHtml(label)}" ${selected.includes(label)?'checked':''}><span>${escapeHtml(label)}</span></label>`).join('');
       document.querySelector('#managed-property-list').innerHTML = activeProperties().map(label => `<div class="managed-item property-item" draggable="true" data-property="${escapeHtml(label)}" data-search="${escapeHtml(label.toLowerCase())}"><span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span><span class="fluid-details"><strong>${escapeHtml(label)}</strong><small>${defaultProperties.includes(label)?'Default property':'Added property'}</small></span><button type="button" class="remove-property" data-property="${escapeHtml(label)}">Remove</button></div>`).join('');
       const inactive = propertyCatalog.filter(item => !activeProperties().includes(item.label));
@@ -353,6 +371,27 @@
       document.querySelectorAll('.fluid-option').forEach(option => option.hidden = !option.textContent.toLowerCase().includes(query));
     });
     document.querySelector('#property-search').addEventListener('input', event => { const query=event.target.value.toLowerCase(); document.querySelectorAll('.property-option').forEach(option=>option.hidden=!option.textContent.toLowerCase().includes(query)); });
+    function saveCalculationState() {
+      const form = document.querySelector('.form-panel');
+      const state = {
+        mode: form.querySelector('input[name="mode"]:checked').value,
+        temperatureUnit: form.querySelector('input[name="unit"]:checked').value,
+        pressureUnit: form.querySelector('input[name="pressure_unit"]:checked').value,
+        fluids: [...form.querySelectorAll('input[name="fluids"]:checked')].map(input => input.value),
+        properties: [...form.querySelectorAll('input[name="properties"]:checked')].map(input => input.value),
+      };
+      ['start_temperature','end_temperature','start_pressure','end_pressure','points'].forEach(name => { state[name] = form.querySelector(`[name="${name}"]`).value; });
+      localStorage.setItem(calculationStorageKey, JSON.stringify(state));
+    }
+    const calculationForm = document.querySelector('.form-panel');
+    calculationForm.addEventListener('input', saveCalculationState);
+    calculationForm.addEventListener('change', () => requestAnimationFrame(saveCalculationState));
+    calculationForm.addEventListener('submit', saveCalculationState);
+    document.querySelector('#reset-calculation').addEventListener('click', () => {
+      if (!confirm('Reset the calculation mode, units, values, and selections to their defaults?')) return;
+      localStorage.removeItem(calculationStorageKey);
+      window.location.assign('/');
+    });
   </script>
 </body>
 </html>
