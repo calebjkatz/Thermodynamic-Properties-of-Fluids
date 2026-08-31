@@ -16,9 +16,9 @@ Open <http://127.0.0.1:5000>.
 
 Plotly is bundled locally, so calculations and charts work without an internet connection.
 
-Public requests are limited to 10 fluids and 100 temperature points to keep scientific calculations responsive on small hosting instances.
+Public one-dimensional requests are limited to 10 fluids and 400 temperature or pressure points. The interface warns that calculations may take longer above 100 points.
 
-Pressure inputs and results support pascals and atmospheres, with live conversion of entered values when units change. The reserved `temperature_pressure_surface` calculation mode and disabled interface option provide the framework for a future simultaneous temperature/pressure sweep with 3D Plotly surfaces.
+Pressure inputs and results support pascals and atmospheres, with live conversion of entered values when units change. The reserved `temperature_pressure_surface` calculation mode and disabled interface option provide the framework for a future simultaneous temperature/pressure sweep with 3D Plotly surfaces. Its separate temperature and pressure resolutions are each capped at 30 and warn above 15.
 
 Plotly data points support click-to-pin annotations. A pinned label shows the fluid, axis value, and property value until the same point is clicked again.
 

@@ -47,6 +47,19 @@ ADDITIONAL_PROPERTY_MAP = {
 SUPPORTED_PROPERTY_MAP = {**PROPERTY_MAP, **ADDITIONAL_PROPERTY_MAP}
 PASCALS_PER_ATMOSPHERE = 101325.0
 CALCULATION_MODES = {"temperature_range", "pressure_range", "temperature_pressure_surface"}
+MAX_RANGE_POINTS = 400
+MAX_SURFACE_POINTS_PER_AXIS = 30
+
+
+def validate_surface_resolution(temperature_points, pressure_points):
+    """Validate the reserved 3D grid resolution before surface mode is enabled."""
+    temperature_points = int(temperature_points)
+    pressure_points = int(pressure_points)
+    if not 2 <= temperature_points <= MAX_SURFACE_POINTS_PER_AXIS:
+        raise ValueError("3D temperature points must be between 2 and 30.")
+    if not 2 <= pressure_points <= MAX_SURFACE_POINTS_PER_AXIS:
+        raise ValueError("3D pressure points must be between 2 and 30.")
+    return temperature_points, pressure_points
 
 
 def load_fluids():
@@ -117,6 +130,10 @@ def parse_form(form, fluids):
     if mode not in CALCULATION_MODES:
         raise ValueError("Choose a valid calculation mode.")
     if mode == "temperature_pressure_surface":
+        validate_surface_resolution(
+            form.get("surface_temperature_points", ""),
+            form.get("surface_pressure_points", ""),
+        )
         raise ValueError("The temperature and pressure surface mode is scaffolded but not available yet.")
     if temperature_unit not in {"K", "C"}:
         raise ValueError("Choose Kelvin or Celsius.")
@@ -144,8 +161,8 @@ def parse_form(form, fluids):
         raise ValueError("Pressure must be a positive number.")
 
     points = int(form.get("points", ""))
-    if not 2 <= points <= 100:
-        raise ValueError("Number of points must be between 2 and 100.")
+    if not 2 <= points <= MAX_RANGE_POINTS:
+        raise ValueError("Number of points must be between 2 and 400.")
 
     if mode == "temperature_range":
         end_temperature = float(form.get("end_temperature", ""))

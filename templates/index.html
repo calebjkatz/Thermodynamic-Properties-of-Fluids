@@ -51,7 +51,9 @@
         <label class="temperature-range-only">End temperature<input name="end_temperature" type="number" step="any" value="{{ form.get('end_temperature', '373.15') }}"></label>
         <label id="start-pressure-label">Fixed pressure<input name="start_pressure" type="number" step="any" min="0" required value="{{ form.get('start_pressure', '101325') }}"></label>
         <label class="pressure-range-only">End pressure<input name="end_pressure" type="number" step="any" min="0" value="{{ form.get('end_pressure', '202650') }}"></label>
-        <label>Number of points<input name="points" type="number" min="2" max="100" value="{{ form.get('points', '25') }}"></label>
+        <label class="one-dimensional-points">Number of points<input name="points" type="number" min="2" max="400" value="{{ form.get('points', '25') }}"></label>
+        <label class="surface-only" hidden>Temperature points<input name="surface_temperature_points" type="number" min="2" max="30" value="{{ form.get('surface_temperature_points', '15') }}"></label>
+        <label class="surface-only" hidden>Pressure points<input name="surface_pressure_points" type="number" min="2" max="30" value="{{ form.get('surface_pressure_points', '15') }}"></label>
       </div>
 
       <div class="selector-grid">
@@ -219,7 +221,7 @@
       if (savedMode && !savedMode.disabled) savedMode.checked = true;
       if (savedTemperatureUnit) savedTemperatureUnit.checked = true;
       if (savedPressureUnit) savedPressureUnit.checked = true;
-      ['start_temperature','end_temperature','start_pressure','end_pressure','points'].forEach(name => {
+      ['start_temperature','end_temperature','start_pressure','end_pressure','points','surface_temperature_points','surface_pressure_points'].forEach(name => {
         const field = document.querySelector(`[name="${name}"]`);
         if (field && savedCalculation[name] !== undefined) field.value = savedCalculation[name];
       });
@@ -330,9 +332,12 @@
     function syncMode() {
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const temperatureRange = mode === 'temperature_range';
-      document.querySelectorAll('.temperature-range-only').forEach(el => el.hidden = !temperatureRange);
+      const surfaceMode = mode === 'temperature_pressure_surface';
+      document.querySelectorAll('.temperature-range-only').forEach(el => el.hidden = !(temperatureRange || surfaceMode));
       document.querySelectorAll('.pressure-range-only').forEach(el => el.hidden = temperatureRange);
-      document.querySelector('input[name="end_temperature"]').required = temperatureRange;
+      document.querySelectorAll('.surface-only').forEach(el => el.hidden = !surfaceMode);
+      document.querySelectorAll('.one-dimensional-points').forEach(el => el.hidden = surfaceMode);
+      document.querySelector('input[name="end_temperature"]').required = temperatureRange || surfaceMode;
       document.querySelector('input[name="end_pressure"]').required = !temperatureRange;
       const temperatureUnit = document.querySelector('input[name="unit"]:checked').value === 'K' ? 'K' : '°C';
       const pressureUnit = document.querySelector('input[name="pressure_unit"]:checked').value;
@@ -366,6 +371,17 @@
       previousPressureUnit = nextUnit;
       syncMode();
     }));
+    function addLongCalculationWarning(field, threshold) {
+      let warningShown = Number(field.value) > threshold;
+      field.addEventListener('change', () => {
+        const exceedsThreshold = Number(field.value) > threshold;
+        if (exceedsThreshold && !warningShown) alert(`using more than ${threshold} points can cause longer wait times for calculations`);
+        warningShown = exceedsThreshold;
+      });
+    }
+    addLongCalculationWarning(document.querySelector('input[name="points"]'), 100);
+    addLongCalculationWarning(document.querySelector('input[name="surface_temperature_points"]'), 15);
+    addLongCalculationWarning(document.querySelector('input[name="surface_pressure_points"]'), 15);
     document.querySelector('#fluid-search').addEventListener('input', event => {
       const query = event.target.value.toLowerCase();
       document.querySelectorAll('.fluid-option').forEach(option => option.hidden = !option.textContent.toLowerCase().includes(query));
@@ -380,7 +396,7 @@
         fluids: [...form.querySelectorAll('input[name="fluids"]:checked')].map(input => input.value),
         properties: [...form.querySelectorAll('input[name="properties"]:checked')].map(input => input.value),
       };
-      ['start_temperature','end_temperature','start_pressure','end_pressure','points'].forEach(name => { state[name] = form.querySelector(`[name="${name}"]`).value; });
+      ['start_temperature','end_temperature','start_pressure','end_pressure','points','surface_temperature_points','surface_pressure_points'].forEach(name => { state[name] = form.querySelector(`[name="${name}"]`).value; });
       localStorage.setItem(calculationStorageKey, JSON.stringify(state));
     }
     const calculationForm = document.querySelector('.form-panel');

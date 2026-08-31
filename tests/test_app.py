@@ -35,6 +35,9 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b"thermo-calculation-state-v1", response.data)
         self.assertIn(b"saveCalculationState", response.data)
         self.assertIn(b"Reset calculation selections", response.data)
+        self.assertIn(b'max="400"', response.data)
+        self.assertEqual(response.data.count(b'max="30"'), 2)
+        self.assertIn(b"using more than ${threshold} points can cause longer wait times for calculations", response.data)
 
     def test_mass_basis_and_phase_change_properties_are_optional_not_default(self):
         optional_properties = {
@@ -104,6 +107,7 @@ class FluidsAppTests(unittest.TestCase):
         response = self.client.post("/", data={
             "mode": "temperature_pressure_surface", "unit": "K", "pressure_unit": "Pa",
             "start_temperature": "298.15", "start_pressure": "101325", "points": "3",
+            "surface_temperature_points": "15", "surface_pressure_points": "15",
             "fluids": "7732-18-5", "properties": "Density (kg/m^3)",
         })
         self.assertEqual(response.status_code, 200)
@@ -127,10 +131,17 @@ class FluidsAppTests(unittest.TestCase):
     def test_public_point_limit(self):
         response = self.client.post("/", data={
             "mode": "temperature_range", "unit": "K", "pressure_unit": "Pa",
-            "start_temperature": "298.15", "end_temperature": "300", "start_pressure": "101325", "points": "101",
+            "start_temperature": "298.15", "end_temperature": "300", "start_pressure": "101325", "points": "401",
             "fluids": "7732-18-5", "properties": "Density (kg/m^3)",
         })
-        self.assertIn(b"Number of points must be between 2 and 100", response.data)
+        self.assertIn(b"Number of points must be between 2 and 400", response.data)
+
+    def test_surface_resolution_is_capped_at_thirty_per_axis(self):
+        self.assertEqual(fluids_app.validate_surface_resolution(30, 30), (30, 30))
+        with self.assertRaisesRegex(ValueError, "temperature points must be between 2 and 30"):
+            fluids_app.validate_surface_resolution(31, 30)
+        with self.assertRaisesRegex(ValueError, "pressure points must be between 2 and 30"):
+            fluids_app.validate_surface_resolution(30, 31)
 
 
 if __name__ == "__main__":
