@@ -112,9 +112,10 @@
         </form>
         <div class="manager-card">
           <h3>Current list</h3>
-          <p>Removing a default hides it in this browser; it does not delete the original record.</p>
+          <p>Drag fluids into your preferred order. Removing a default only hides it in this browser.</p>
           <input id="manage-fluid-search" type="search" placeholder="Search current fluids">
-          <div id="managed-fluid-list" class="managed-list"></div>
+          <p class="drag-hint">Drag using the dotted handle. Clear the search field before reordering.</p>
+          <div id="managed-fluid-list" class="managed-list" aria-label="Sortable fluid list"></div>
           <button id="reset-fluids" class="secondary" type="button">Reset to all defaults <span>↺</span></button>
         </div>
       </div>
@@ -155,19 +156,26 @@
       }
     }));
     const defaultFluids = {{ fluids|tojson }};
-    const submittedFluids = {{ form.getlist('fluids')|tojson }};
+    let submittedFluids = {{ form.getlist('fluids')|tojson }};
     const storageKey = 'thermo-fluid-customizations-v1';
-    let customization = {added: [], hidden: []};
+    let customization = {added: [], hidden: [], order: []};
     try { customization = {...customization, ...JSON.parse(localStorage.getItem(storageKey) || '{}')}; } catch (_) {}
-    const activeFluids = () => [...defaultFluids.filter(f => !customization.hidden.includes(String(f.cas_number))), ...customization.added]
-      .filter((fluid, index, all) => all.findIndex(item => String(item.cas_number) === String(fluid.cas_number)) === index)
-      .sort((a,b) => a.name.localeCompare(b.name));
+    const activeFluids = () => {
+      const available = [...defaultFluids.filter(f => !customization.hidden.includes(String(f.cas_number))), ...customization.added]
+        .filter((fluid, index, all) => all.findIndex(item => String(item.cas_number) === String(fluid.cas_number)) === index);
+      const byCas = new Map(available.map(fluid => [String(fluid.cas_number), fluid]));
+      const ordered = customization.order.map(cas => byCas.get(String(cas))).filter(Boolean);
+      const orderedCas = new Set(ordered.map(fluid => String(fluid.cas_number)));
+      return [...ordered, ...available.filter(fluid => !orderedCas.has(String(fluid.cas_number)))];
+    };
     const saveFluids = () => localStorage.setItem(storageKey, JSON.stringify(customization));
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
     function renderFluids() {
+      const checked = [...document.querySelectorAll('#fluid-options input[name="fluids"]:checked')].map(input => input.value);
+      if (document.querySelector('#fluid-options').children.length) submittedFluids = checked;
       const selected = submittedFluids.length ? submittedFluids : ['7732-18-5'];
       document.querySelector('#fluid-options').innerHTML = activeFluids().map(fluid => `<label class="fluid-option"><input type="checkbox" name="fluids" value="${escapeHtml(fluid.cas_number)}" data-label="${escapeHtml(fluid.name)}" ${selected.includes(String(fluid.cas_number)) ? 'checked' : ''}><span>${escapeHtml(fluid.name).replaceAll('_',' ')}</span><small>${escapeHtml(fluid.cas_number)}</small></label>`).join('');
-      document.querySelector('#managed-fluid-list').innerHTML = activeFluids().map(fluid => `<div class="managed-item" data-search="${escapeHtml(`${fluid.name} ${fluid.formula || ''} ${fluid.cas_number}`.toLowerCase())}"><span><strong>${escapeHtml(fluid.name).replaceAll('_',' ')}</strong><small>${escapeHtml(fluid.formula || '')} · ${escapeHtml(fluid.cas_number)}</small></span><button type="button" class="remove-fluid" data-cas="${escapeHtml(fluid.cas_number)}">Remove</button></div>`).join('');
+      document.querySelector('#managed-fluid-list').innerHTML = activeFluids().map(fluid => `<div class="managed-item" draggable="true" data-cas="${escapeHtml(fluid.cas_number)}" data-search="${escapeHtml(`${fluid.name} ${fluid.formula || ''} ${fluid.cas_number}`.toLowerCase())}"><span class="drag-handle" title="Drag to reorder" aria-hidden="true">⠿</span><span class="fluid-details"><strong>${escapeHtml(fluid.name).replaceAll('_',' ')}</strong><small>${escapeHtml(fluid.formula || '')} · ${escapeHtml(fluid.cas_number)}</small></span><button type="button" class="remove-fluid" data-cas="${escapeHtml(fluid.cas_number)}">Remove</button></div>`).join('');
     }
     renderFluids();
     document.querySelector('.form-panel').addEventListener('submit', event => {
@@ -182,12 +190,19 @@
       try { const response=await fetch('/api/fluids/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({identifier:document.querySelector('#new-fluid-identifier').value,name:document.querySelector('#new-fluid-name').value})}); const data=await response.json(); if(!response.ok) throw new Error(data.error);
         const cas=String(data.cas_number); customization.hidden=customization.hidden.filter(item=>item!==cas);
         if (!defaultFluids.some(item=>String(item.cas_number)===cas)) customization.added=[...customization.added.filter(item=>String(item.cas_number)!==cas),data];
+        customization.order=[...customization.order.filter(item=>String(item)!==cas),cas];
         saveFluids(); submittedFluids.push(cas); renderFluids(); event.currentTarget.reset(); showFluidMessage(`${data.name} was added to this browser.`);
       } catch(error) { showFluidMessage(error.message,'error'); } finally { button.disabled=false; }
     });
-    document.querySelector('#managed-fluid-list').addEventListener('click', event => { const button=event.target.closest('.remove-fluid'); if(!button)return; const cas=button.dataset.cas; const fluid=activeFluids().find(item=>String(item.cas_number)===cas); if(!confirm(`Remove ${fluid.name} from this browser's list?`))return; if(defaultFluids.some(item=>String(item.cas_number)===cas)) customization.hidden=[...new Set([...customization.hidden,cas])]; else customization.added=customization.added.filter(item=>String(item.cas_number)!==cas); saveFluids(); renderFluids(); showFluidMessage(`${fluid.name} was removed from this browser. The original CSV was not changed.`); });
-    document.querySelector('#reset-fluids').addEventListener('click', () => { if(!confirm('Restore the complete default fluid list and remove browser-added fluids?'))return; customization={added:[],hidden:[]}; saveFluids(); renderFluids(); showFluidMessage('The original default list has been restored.'); });
-    document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('.managed-item').forEach(item=>item.hidden=!item.dataset.search.includes(q)); });
+    const managedList = document.querySelector('#managed-fluid-list');
+    managedList.addEventListener('click', event => { const button=event.target.closest('.remove-fluid'); if(!button)return; const cas=button.dataset.cas; const fluid=activeFluids().find(item=>String(item.cas_number)===cas); if(!confirm(`Remove ${fluid.name} from this browser's list?`))return; if(defaultFluids.some(item=>String(item.cas_number)===cas)) customization.hidden=[...new Set([...customization.hidden,cas])]; else customization.added=customization.added.filter(item=>String(item.cas_number)!==cas); customization.order=customization.order.filter(item=>String(item)!==cas); saveFluids(); renderFluids(); showFluidMessage(`${fluid.name} was removed from this browser. The original CSV was not changed.`); });
+    let draggedFluid = null;
+    managedList.addEventListener('dragstart', event => { if(document.querySelector('#manage-fluid-search').value.trim()){event.preventDefault();showFluidMessage('Clear the fluid search before reordering.','warning');return;} draggedFluid=event.target.closest('.managed-item'); if(!draggedFluid)return; draggedFluid.classList.add('dragging'); event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',draggedFluid.dataset.cas); });
+    managedList.addEventListener('dragover', event => { if(!draggedFluid)return; event.preventDefault(); const target=event.target.closest('.managed-item'); if(!target||target===draggedFluid)return; const after=event.clientY > target.getBoundingClientRect().top + target.offsetHeight/2; managedList.insertBefore(draggedFluid,after?target.nextSibling:target); });
+    managedList.addEventListener('drop', event => event.preventDefault());
+    managedList.addEventListener('dragend', () => { if(!draggedFluid)return; draggedFluid.classList.remove('dragging'); customization.order=[...managedList.querySelectorAll('.managed-item')].map(item=>item.dataset.cas); saveFluids(); draggedFluid=null; renderFluids(); showFluidMessage('Your custom fluid order was saved in this browser.'); });
+    document.querySelector('#reset-fluids').addEventListener('click', () => { if(!confirm('Restore the complete default fluid list and remove browser-added fluids?'))return; customization={added:[],hidden:[],order:[]}; saveFluids(); renderFluids(); showFluidMessage('The original default list and order have been restored.'); });
+    document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('.managed-item').forEach(item=>{item.hidden=!item.dataset.search.includes(q);item.draggable=!q;}); });
     const feedbackForm = document.querySelector('#feedback-form');
     feedbackForm.addEventListener('submit', async event => {
       event.preventDefault();

@@ -26,4 +26,4 @@ Suggestions, bug reports, and incorrect-result reports are submitted from the br
 gunicorn app:app
 ```
 
-The 16 records in this folder's independent `fluids.csv` are immutable defaults. Added fluids and hidden defaults are stored in the browser's `localStorage`, so every browser gets its own customized list and no fluid-management action writes to CSV. “Reset to all defaults” clears those customizations. Clearing browser site data also resets the list.
+The 16 records in this folder's independent `fluids.csv` are immutable defaults. Added fluids, hidden defaults, and drag-and-drop ordering are stored in the browser's `localStorage`, so every browser gets its own customized list and no fluid-management action writes to CSV. “Reset to all defaults” clears those customizations. Clearing browser site data also resets the list.
