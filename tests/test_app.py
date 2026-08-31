@@ -36,6 +36,15 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b"saveCalculationState", response.data)
         self.assertIn(b"Reset calculation selections", response.data)
 
+    def test_mass_basis_and_phase_change_properties_are_optional_not_default(self):
+        optional_properties = {
+            "Heat Capacity (J/kg/K)", "Enthalpy (J/kg)", "Entropy (J/kg/K)",
+            "Gibbs Energy (J/kg)", "Molecular Weight (g/mol)",
+            "Melting Temperature (K)", "Boiling Temperature (K)",
+        }
+        self.assertTrue(optional_properties.isdisjoint(fluids_app.PROPERTY_MAP))
+        self.assertTrue(optional_properties.issubset(fluids_app.SUPPORTED_PROPERTY_MAP))
+
     def test_custom_fluid_validation(self):
         response = self.client.post("/api/fluids/validate", json={"identifier": "acetone", "name": "My acetone"})
         self.assertEqual(response.status_code, 200)

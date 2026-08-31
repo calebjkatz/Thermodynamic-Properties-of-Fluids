@@ -18,13 +18,6 @@ PROPERTY_MAP = {
     "Molar Enthalpy (J/mol)": "Hm",
     "Molar Entropy (J/mol/K)": "Sm",
     "Molar Gibbs Energy (J/mol)": "Gm",
-    "Heat Capacity (J/kg/K)": "Cp",
-    "Enthalpy (J/kg)": "H",
-    "Entropy (J/kg/K)": "S",
-    "Gibbs Energy (J/kg)": "G",
-    "Molecular Weight (g/mol)": "MW",
-    "Melting Temperature (K)": "Tm",
-    "Boiling Temperature (K)": "Tb",
     "Dielectric Constant / Relative Permittivity (Dimensionless)": "permittivity",
     "Absolute Permittivity (F/m)": "absolute_permittivity",
     "Density (kg/m^3)": "rho",
@@ -35,6 +28,13 @@ PROPERTY_MAP = {
 }
 
 ADDITIONAL_PROPERTY_MAP = {
+    "Heat Capacity (J/kg/K)": "Cp",
+    "Enthalpy (J/kg)": "H",
+    "Entropy (J/kg/K)": "S",
+    "Gibbs Energy (J/kg)": "G",
+    "Molecular Weight (g/mol)": "MW",
+    "Melting Temperature (K)": "Tm",
+    "Boiling Temperature (K)": "Tb",
     "Surface Tension (N/m)": "sigma",
     "Prandtl Number (Dimensionless)": "Pr",
     "Thermal Diffusivity (m^2/s)": "alpha",
