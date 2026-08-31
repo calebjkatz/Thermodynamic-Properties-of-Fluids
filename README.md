@@ -16,7 +16,7 @@ Open <http://127.0.0.1:5000>.
 
 Plotly is bundled locally, so calculations and charts work without an internet connection.
 
-Public one-dimensional requests are limited to 10 fluids and 400 temperature or pressure points. Above 100 points, a yellow inline exclamation box warns that calculations may take longer without opening a browser dialog.
+Public one-dimensional requests are limited to 10 fluids and 400 temperature or pressure points. From 101–400, a yellow inline exclamation box warns that calculations may take longer. At 401+, an orange inline limit box replaces the advisory and prevents submission without opening a browser dialog. The future 3D controls use the same pattern at 16–30 and 31+ points per axis.
 
 Pressure inputs and results support pascals and atmospheres, with live conversion of entered values when units change. The reserved `temperature_pressure_surface` calculation mode and disabled interface option provide the framework for a future simultaneous temperature/pressure sweep with 3D Plotly surfaces. Its separate temperature and pressure resolutions are each capped at 30 and warn above 15.
 

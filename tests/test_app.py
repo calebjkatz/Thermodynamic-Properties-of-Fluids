@@ -35,12 +35,15 @@ class FluidsAppTests(unittest.TestCase):
         self.assertIn(b"thermo-calculation-state-v1", response.data)
         self.assertIn(b"saveCalculationState", response.data)
         self.assertIn(b"Reset calculation selections", response.data)
-        self.assertIn(b'max="400"', response.data)
-        self.assertEqual(response.data.count(b'max="30"'), 2)
+        self.assertIn(b'data-max-points="400"', response.data)
+        self.assertEqual(response.data.count(b'data-max-points="30"'), 2)
         self.assertIn(b"using more than ${threshold} points can cause longer wait times for calculations", response.data)
         self.assertIn(b"point-warning-icon", response.data)
         self.assertIn(b"warning.hidden", response.data)
         self.assertNotIn(b"alert(`using more than", response.data)
+        self.assertIn(b"point-limit-icon", response.data)
+        self.assertIn(b"value > threshold && !exceedsMaximum", response.data)
+        self.assertIn(b"The maximum is ${maximum} points", response.data)
 
     def test_mass_basis_and_phase_change_properties_are_optional_not_default(self):
         optional_properties = {

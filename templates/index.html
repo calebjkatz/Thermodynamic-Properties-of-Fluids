@@ -51,9 +51,9 @@
         <label class="temperature-range-only">End temperature<input name="end_temperature" type="number" step="any" value="{{ form.get('end_temperature', '373.15') }}"></label>
         <label id="start-pressure-label">Fixed pressure<input name="start_pressure" type="number" step="any" min="0" required value="{{ form.get('start_pressure', '101325') }}"></label>
         <label class="pressure-range-only">End pressure<input name="end_pressure" type="number" step="any" min="0" value="{{ form.get('end_pressure', '202650') }}"></label>
-        <label class="one-dimensional-points">Number of points<input name="points" type="number" min="2" max="400" value="{{ form.get('points', '25') }}"></label>
-        <label class="surface-only" hidden>Temperature points<input name="surface_temperature_points" type="number" min="2" max="30" value="{{ form.get('surface_temperature_points', '15') }}"></label>
-        <label class="surface-only" hidden>Pressure points<input name="surface_pressure_points" type="number" min="2" max="30" value="{{ form.get('surface_pressure_points', '15') }}"></label>
+        <label class="one-dimensional-points">Number of points<input name="points" type="number" min="2" data-max-points="400" value="{{ form.get('points', '25') }}"></label>
+        <label class="surface-only" hidden>Temperature points<input name="surface_temperature_points" type="number" min="2" data-max-points="30" value="{{ form.get('surface_temperature_points', '15') }}"></label>
+        <label class="surface-only" hidden>Pressure points<input name="surface_pressure_points" type="number" min="2" data-max-points="30" value="{{ form.get('surface_pressure_points', '15') }}"></label>
       </div>
 
       <div class="selector-grid">
@@ -371,7 +371,7 @@
       previousPressureUnit = nextUnit;
       syncMode();
     }));
-    function addLongCalculationWarning(field, threshold) {
+    function addPointWarnings(field, threshold, maximum) {
       const warning = document.createElement('div');
       warning.className = 'point-warning';
       warning.setAttribute('role', 'status');
@@ -384,14 +384,38 @@
       message.textContent = `using more than ${threshold} points can cause longer wait times for calculations`;
       warning.append(icon, message);
       field.insertAdjacentElement('afterend', warning);
-      const updateWarning = () => { warning.hidden = !(Number(field.value) > threshold); };
-      field.addEventListener('input', updateWarning);
-      field.addEventListener('change', updateWarning);
-      updateWarning();
+      const limit = document.createElement('div');
+      limit.className = 'point-limit-warning';
+      limit.setAttribute('role', 'alert');
+      const limitIcon = document.createElement('span');
+      limitIcon.className = 'point-limit-icon';
+      limitIcon.setAttribute('aria-hidden', 'true');
+      limitIcon.textContent = '!';
+      const limitMessage = document.createElement('span');
+      limitMessage.textContent = `The maximum is ${maximum} points. Enter ${maximum} or fewer to run the calculation.`;
+      limit.append(limitIcon, limitMessage);
+      warning.insertAdjacentElement('afterend', limit);
+      const updateWarnings = () => {
+        const value = Number(field.value);
+        const exceedsMaximum = value > maximum;
+        warning.hidden = !(value > threshold && !exceedsMaximum);
+        limit.hidden = !exceedsMaximum;
+        field.setAttribute('aria-invalid', exceedsMaximum ? 'true' : 'false');
+      };
+      field.addEventListener('input', updateWarnings);
+      field.addEventListener('change', updateWarnings);
+      updateWarnings();
     }
-    addLongCalculationWarning(document.querySelector('input[name="points"]'), 100);
-    addLongCalculationWarning(document.querySelector('input[name="surface_temperature_points"]'), 15);
-    addLongCalculationWarning(document.querySelector('input[name="surface_pressure_points"]'), 15);
+    addPointWarnings(document.querySelector('input[name="points"]'), 100, 400);
+    addPointWarnings(document.querySelector('input[name="surface_temperature_points"]'), 15, 30);
+    addPointWarnings(document.querySelector('input[name="surface_pressure_points"]'), 15, 30);
+    document.querySelector('.form-panel').addEventListener('submit', event => {
+      const invalidField = event.currentTarget.querySelector('input[aria-invalid="true"]');
+      if (!invalidField) return;
+      event.preventDefault();
+      invalidField.focus();
+      invalidField.scrollIntoView({behavior: 'smooth', block: 'center'});
+    });
     document.querySelector('#fluid-search').addEventListener('input', event => {
       const query = event.target.value.toLowerCase();
       document.querySelectorAll('.fluid-option').forEach(option => option.hidden = !option.textContent.toLowerCase().includes(query));
