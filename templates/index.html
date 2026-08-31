@@ -372,12 +372,22 @@
       syncMode();
     }));
     function addLongCalculationWarning(field, threshold) {
-      let warningShown = Number(field.value) > threshold;
-      field.addEventListener('change', () => {
-        const exceedsThreshold = Number(field.value) > threshold;
-        if (exceedsThreshold && !warningShown) alert(`using more than ${threshold} points can cause longer wait times for calculations`);
-        warningShown = exceedsThreshold;
-      });
+      const warning = document.createElement('div');
+      warning.className = 'point-warning';
+      warning.setAttribute('role', 'status');
+      warning.setAttribute('aria-live', 'polite');
+      const icon = document.createElement('span');
+      icon.className = 'point-warning-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '!';
+      const message = document.createElement('span');
+      message.textContent = `using more than ${threshold} points can cause longer wait times for calculations`;
+      warning.append(icon, message);
+      field.insertAdjacentElement('afterend', warning);
+      const updateWarning = () => { warning.hidden = !(Number(field.value) > threshold); };
+      field.addEventListener('input', updateWarning);
+      field.addEventListener('change', updateWarning);
+      updateWarning();
     }
     addLongCalculationWarning(document.querySelector('input[name="points"]'), 100);
     addLongCalculationWarning(document.querySelector('input[name="surface_temperature_points"]'), 15);
