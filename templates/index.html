@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thermodynamic Fluids Explorer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">FLUID PROPERTY TOOL</p>
+      <h1>Thermodynamic Fluids Explorer</h1>
+      <p>Compare liquid-state properties across temperatures and pressure.</p>
+      <a class="hero-link" href="#manage-fluids">Customize your fluid list →</a>
+    </div>
+    <div class="phase-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+  </header>
+
+  <main>
+    <form method="post" class="panel form-panel">
+      <div class="section-heading">
+        <span>01</span><div><h2>Configure calculation</h2><p>Choose fluids, conditions, and outputs.</p></div>
+      </div>
+
+      {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+      {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+
+      <div class="field-grid">
+        <fieldset>
+          <legend>Calculation mode</legend>
+          <label class="radio"><input type="radio" name="mode" value="range" {% if form.get('mode', 'range') == 'range' %}checked{% endif %}> Temperature range</label>
+          <label class="radio"><input type="radio" name="mode" value="single" {% if form.get('mode') == 'single' %}checked{% endif %}> Single state</label>
+        </fieldset>
+        <fieldset>
+          <legend>Temperature unit</legend>
+          <label class="radio"><input type="radio" name="unit" value="K" {% if form.get('unit', 'K') == 'K' %}checked{% endif %}> Kelvin</label>
+          <label class="radio"><input type="radio" name="unit" value="C" {% if form.get('unit') == 'C' %}checked{% endif %}> Celsius</label>
+        </fieldset>
+      </div>
+
+      <div class="field-grid inputs">
+        <label>Start temperature<input name="start_temperature" type="number" step="any" required value="{{ form.get('start_temperature', '298.15') }}"></label>
+        <label class="range-only">End temperature<input name="end_temperature" type="number" step="any" value="{{ form.get('end_temperature', '373.15') }}"></label>
+        <label>Pressure (Pa)<input name="pressure" type="number" step="any" min="0" required value="{{ form.get('pressure', '101325') }}"></label>
+        <label class="range-only">Number of points<input name="points" type="number" min="2" max="100" value="{{ form.get('points', '25') }}"></label>
+      </div>
+
+      <div class="selector-grid">
+        <fieldset>
+          <legend>Fluids <small>Select one or more</small></legend>
+          <input class="list-search" id="fluid-search" type="search" placeholder="Search fluids">
+          <div class="check-list" id="fluid-options"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Properties <small>Select one or more</small></legend>
+          <div class="check-list">
+            {% set chosen_properties = form.getlist('properties') %}
+            {% for property in properties %}
+              <label><input type="checkbox" name="properties" value="{{ property }}" {% if property in chosen_properties or (not form and property in ['Density (kg/m^3)', 'Viscosity (Pa*s)']) %}checked{% endif %}> <span>{{ property }}</span></label>
+            {% endfor %}
+          </div>
+        </fieldset>
+      </div>
+      <button type="submit">Run calculation <span>→</span></button>
+    </form>
+
+    {% if results %}
+      <section class="panel results-panel">
+        <div class="section-heading"><span>02</span><div><h2>Results</h2><p>{{ results|length }} calculated data points</p></div></div>
+        {% for warning in warnings %}<div class="alert warning">{{ warning }}</div>{% endfor %}
+        <div class="table-wrap"><table><thead><tr>{% for column in columns %}<th>{{ column }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for row in results %}<tr>{% for column in columns %}<td>{{ '—' if row[column] is none else row[column] }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>
+        <form method="post" action="{{ url_for('export_results') }}" class="export-form">
+          {% for key in form.keys() %}{% for value in form.getlist(key) %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}{% endfor %}
+          <button class="secondary" type="submit">Download results as CSV <span>↓</span></button>
+        </form>
+      </section>
+    {% endif %}
+
+    {% if charts %}
+      <section class="panel chart-panel">
+        <div class="section-heading"><span>03</span><div><h2>Property trends</h2><p>Hover, zoom, and compare fluids.</p></div></div>
+        {% for chart in charts %}<div id="chart-{{ loop.index }}" class="chart"></div>{% endfor %}
+      </section>
+      <script src="{{ url_for('static', filename='plotly.min.js') }}"></script>
+      <script>
+        const charts = {{ charts|tojson }};
+        charts.forEach((chart, index) => {
+          const traces = chart.traces.map(trace => ({...trace, mode: 'lines+markers', type: 'scatter'}));
+          Plotly.newPlot(`chart-${index + 1}`, traces, {
+            title: {text: chart.property, x: 0.02}, xaxis: {title: chart.temperature_label},
+            yaxis: {title: chart.property}, paper_bgcolor: 'transparent', plot_bgcolor: '#f7faf9',
+            margin: {t: 60, r: 24, b: 70, l: 90}, font: {family: 'system-ui', color: '#18332f'}
+          }, {responsive: true, displaylogo: false});
+        });
+      </script>
+    {% endif %}
+
+    <section class="panel fluid-manager" id="manage-fluids">
+      <div class="section-heading"><span>04</span><div><h2>Customize your fluid list</h2><p>Changes are saved only in this browser. The original default list and CSV never change.</p></div></div>
+      <div id="fluid-message" class="alert" hidden></div>
+      <div class="manager-grid">
+        <form id="add-fluid-form" class="manager-card">
+          <h3>Add a fluid</h3>
+          <p>Enter a chemical name or CAS number. The server validates it, then your browser saves it locally.</p>
+          <label>Chemical name or CAS number<input id="new-fluid-identifier" required placeholder="e.g. acetone or 67-64-1"></label>
+          <label>Display name <small>optional</small><input id="new-fluid-name" placeholder="Use the standard name"></label>
+          <button type="submit">Validate and add <span>＋</span></button>
+        </form>
+        <div class="manager-card">
+          <h3>Current list</h3>
+          <p>Removing a default hides it in this browser; it does not delete the original record.</p>
+          <input id="manage-fluid-search" type="search" placeholder="Search current fluids">
+          <div id="managed-fluid-list" class="managed-list"></div>
+          <button id="reset-fluids" class="secondary" type="button">Reset to all defaults <span>↺</span></button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer>Calculations use the Python <code>thermo</code> library. Verify critical engineering decisions independently.</footer>
+  <script>
+    const defaultFluids = {{ fluids|tojson }};
+    const submittedFluids = {{ form.getlist('fluids')|tojson }};
+    const storageKey = 'thermo-fluid-customizations-v1';
+    let customization = {added: [], hidden: []};
+    try { customization = {...customization, ...JSON.parse(localStorage.getItem(storageKey) || '{}')}; } catch (_) {}
+    const activeFluids = () => [...defaultFluids.filter(f => !customization.hidden.includes(String(f.cas_number))), ...customization.added]
+      .filter((fluid, index, all) => all.findIndex(item => String(item.cas_number) === String(fluid.cas_number)) === index)
+      .sort((a,b) => a.name.localeCompare(b.name));
+    const saveFluids = () => localStorage.setItem(storageKey, JSON.stringify(customization));
+    const escapeHtml = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    function renderFluids() {
+      const selected = submittedFluids.length ? submittedFluids : ['7732-18-5'];
+      document.querySelector('#fluid-options').innerHTML = activeFluids().map(fluid => `<label class="fluid-option"><input type="checkbox" name="fluids" value="${escapeHtml(fluid.cas_number)}" data-label="${escapeHtml(fluid.name)}" ${selected.includes(String(fluid.cas_number)) ? 'checked' : ''}><span>${escapeHtml(fluid.name).replaceAll('_',' ')}</span><small>${escapeHtml(fluid.cas_number)}</small></label>`).join('');
+      document.querySelector('#managed-fluid-list').innerHTML = activeFluids().map(fluid => `<div class="managed-item" data-search="${escapeHtml(`${fluid.name} ${fluid.formula || ''} ${fluid.cas_number}`.toLowerCase())}"><span><strong>${escapeHtml(fluid.name).replaceAll('_',' ')}</strong><small>${escapeHtml(fluid.formula || '')} · ${escapeHtml(fluid.cas_number)}</small></span><button type="button" class="remove-fluid" data-cas="${escapeHtml(fluid.cas_number)}">Remove</button></div>`).join('');
+    }
+    renderFluids();
+    document.querySelector('.form-panel').addEventListener('submit', event => {
+      event.currentTarget.querySelectorAll('input[name="fluid_labels"]').forEach(input => input.remove());
+      event.currentTarget.querySelectorAll('input[name="fluids"]:checked').forEach(input => {
+        const label = document.createElement('input'); label.type='hidden'; label.name='fluid_labels'; label.value=input.dataset.label; event.currentTarget.appendChild(label);
+      });
+    });
+    const showFluidMessage = (message, type='success') => { const box=document.querySelector('#fluid-message'); box.textContent=message; box.className=`alert ${type}`; box.hidden=false; };
+    document.querySelector('#add-fluid-form').addEventListener('submit', async event => {
+      event.preventDefault(); const button=event.currentTarget.querySelector('button'); button.disabled=true;
+      try { const response=await fetch('/api/fluids/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({identifier:document.querySelector('#new-fluid-identifier').value,name:document.querySelector('#new-fluid-name').value})}); const data=await response.json(); if(!response.ok) throw new Error(data.error);
+        const cas=String(data.cas_number); customization.hidden=customization.hidden.filter(item=>item!==cas);
+        if (!defaultFluids.some(item=>String(item.cas_number)===cas)) customization.added=[...customization.added.filter(item=>String(item.cas_number)!==cas),data];
+        saveFluids(); submittedFluids.push(cas); renderFluids(); event.currentTarget.reset(); showFluidMessage(`${data.name} was added to this browser.`);
+      } catch(error) { showFluidMessage(error.message,'error'); } finally { button.disabled=false; }
+    });
+    document.querySelector('#managed-fluid-list').addEventListener('click', event => { const button=event.target.closest('.remove-fluid'); if(!button)return; const cas=button.dataset.cas; const fluid=activeFluids().find(item=>String(item.cas_number)===cas); if(!confirm(`Remove ${fluid.name} from this browser's list?`))return; if(defaultFluids.some(item=>String(item.cas_number)===cas)) customization.hidden=[...new Set([...customization.hidden,cas])]; else customization.added=customization.added.filter(item=>String(item.cas_number)!==cas); saveFluids(); renderFluids(); showFluidMessage(`${fluid.name} was removed from this browser. The original CSV was not changed.`); });
+    document.querySelector('#reset-fluids').addEventListener('click', () => { if(!confirm('Restore the complete default fluid list and remove browser-added fluids?'))return; customization={added:[],hidden:[]}; saveFluids(); renderFluids(); showFluidMessage('The original default list has been restored.'); });
+    document.querySelector('#manage-fluid-search').addEventListener('input', event => { const q=event.target.value.toLowerCase(); document.querySelectorAll('.managed-item').forEach(item=>item.hidden=!item.dataset.search.includes(q)); });
+    const modeInputs = document.querySelectorAll('input[name="mode"]');
+    function syncMode() { const range = document.querySelector('input[name="mode"]:checked').value === 'range'; document.querySelectorAll('.range-only').forEach(el => el.hidden = !range); }
+    modeInputs.forEach(input => input.addEventListener('change', syncMode)); syncMode();
+    let previousUnit = document.querySelector('input[name="unit"]:checked').value;
+    document.querySelectorAll('input[name="unit"]').forEach(input => input.addEventListener('change', event => {
+      const nextUnit = event.target.value;
+      document.querySelectorAll('input[name="start_temperature"], input[name="end_temperature"]').forEach(field => {
+        if (field.value === '') return;
+        const value = Number(field.value);
+        if (Number.isFinite(value)) field.value = (previousUnit === 'K' ? value - 273.15 : value + 273.15).toFixed(2);
+      });
+      previousUnit = nextUnit;
+    }));
+    document.querySelector('#fluid-search').addEventListener('input', event => {
+      const query = event.target.value.toLowerCase();
+      document.querySelectorAll('.fluid-option').forEach(option => option.hidden = !option.textContent.toLowerCase().includes(query));
+    });
+  </script>
+</body>
+</html>
