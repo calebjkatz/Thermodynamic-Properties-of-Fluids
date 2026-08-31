@@ -4,13 +4,14 @@ body { margin:0; color:var(--ink); background:var(--paper); font-family:Inter,ui
 .hero { min-height:260px; padding:56px max(5vw,24px); display:flex; justify-content:space-between; align-items:center; overflow:hidden; color:white; background:linear-gradient(125deg,#0b3f39,#087f6f); }
 .hero h1 { max-width:760px; margin:8px 0 12px; font-family:Georgia,serif; font-size:clamp(2.4rem,6vw,5rem); line-height:.95; letter-spacing:-.04em; }
 .hero p { max-width:650px; color:#d8f3ed; font-size:1.1rem; }
-.hero.compact { min-height:210px; }.hero-links { display:flex; flex-wrap:wrap; gap:8px 22px; }.hero-link { display:inline-block; color:white; font-weight:700; margin-top:8px; }.hero-link:hover { color:var(--aqua); }
+.hero.compact { min-height:210px; }.hero-links { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }.hero-link { display:inline-flex; align-items:center; justify-content:space-between; gap:20px; min-width:220px; padding:11px 14px; color:white; border:1px solid rgba(255,255,255,.45); border-radius:3px; font-weight:700; text-decoration:none; }.hero-link:hover,.hero-link:focus { color:var(--ink); background:var(--aqua); border-color:var(--aqua); }.hero-link span { font-size:1.1rem; }
 .hero .eyebrow { font-size:.75rem; letter-spacing:.2em; font-weight:800; }
 .phase-mark { position:relative; width:210px; height:210px; flex:0 0 auto; }
 .phase-mark span { position:absolute; border:1px solid rgba(255,255,255,.35); border-radius:50%; inset:0; }
 .phase-mark span:nth-child(2){ inset:34px; background:rgba(216,243,237,.1); }.phase-mark span:nth-child(3){ inset:72px; background:#8ee0d1; border:0; }
 main { width:min(1400px,92vw); margin:-34px auto 60px; position:relative; }
 .panel { background:var(--white); border:1px solid var(--line); box-shadow:0 18px 50px rgba(24,51,47,.08); padding:clamp(22px,4vw,46px); margin-bottom:28px; }
+#manage-fluids,#feedback { scroll-margin-top:20px; }
 .section-heading { display:flex; gap:18px; align-items:flex-start; border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:28px; }
 .section-heading>span { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:var(--aqua); color:var(--teal); font-weight:800; font-size:.8rem; }
 h2 { margin:0; font-family:Georgia,serif; font-size:1.65rem; } .section-heading p { margin:4px 0 0; color:var(--muted); }

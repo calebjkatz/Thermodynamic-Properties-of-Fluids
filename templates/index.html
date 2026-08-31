@@ -13,7 +13,7 @@
       <p class="eyebrow">FLUID PROPERTY TOOL</p>
       <h1>Thermodynamic Fluids Explorer</h1>
       <p>Compare liquid-state properties across temperatures and pressure.</p>
-      <div class="hero-links"><a class="hero-link" href="#manage-fluids">Customize your fluid list →</a><a class="hero-link" href="#feedback">Send feedback →</a></div>
+      <nav class="hero-links" aria-label="Page sections"><a class="hero-link" href="#manage-fluids" data-scroll-to="manage-fluids">Customize your fluid list <span>↓</span></a><a class="hero-link" href="#feedback" data-scroll-to="feedback">Send feedback <span>↓</span></a></nav>
     </div>
     <div class="phase-mark" aria-hidden="true"><span></span><span></span><span></span></div>
   </header>
@@ -146,6 +146,14 @@
   </main>
   <footer>Calculations use the Python <code>thermo</code> library. Verify critical engineering decisions independently.</footer>
   <script>
+    document.querySelectorAll('[data-scroll-to]').forEach(link => link.addEventListener('click', event => {
+      event.preventDefault();
+      const section = document.getElementById(link.dataset.scrollTo);
+      if (section) {
+        section.scrollIntoView({behavior: 'smooth', block: 'start'});
+        history.replaceState(null, '', `#${link.dataset.scrollTo}`);
+      }
+    }));
     const defaultFluids = {{ fluids|tojson }};
     const submittedFluids = {{ form.getlist('fluids')|tojson }};
     const storageKey = 'thermo-fluid-customizations-v1';
