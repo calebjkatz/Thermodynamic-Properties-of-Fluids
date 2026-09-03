@@ -1,4 +1,4 @@
-# Thermodynamic Fluids Explorer — Flask MVP
+# Thermodynamic Fluids Explorer
 
 A web version of the desktop thermodynamics app. It supports liquid-only temperature-range and fixed-temperature pressure-range calculations, multiple fluids and properties, CSV downloads, interactive Plotly charts, and browser-local customization.
 
